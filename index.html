@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>우리 동네 기온 탐구 앱</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Jua&family=Noto+Sans+KR:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  /* 교실 태블릿·전자칠판용 단일 밝은 테마: 하늘빛 바탕, 파랑은 자료, 주황은 이름표 */
+  --paper: #F4F7FA;
+  --card: #FFFFFF;
+  --ink: #1E2A38;
+  --ink-soft: #55606E;
+  --grid: #D9DFE6;
+  --data: #2F6DB5;
+  --data-soft: #BFD3EC;
+  --tag: #C2571A;
+  --tag-bg: #FFF1E6;
+  --display: 'Jua', 'Noto Sans KR', sans-serif;
+  --body: 'Noto Sans KR', 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
+  color-scheme: light;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--paper); color: var(--ink); font-family: var(--body); }
+main { max-width: 1040px; margin: 0 auto; padding: 20px 20px 32px; display: flex; flex-direction: column; gap: 16px; }
+header { display: flex; flex-direction: column; gap: 4px; }
+h1 { font-family: var(--display); font-weight: 400; font-size: clamp(30px, 5vw, 44px); margin: 0; text-wrap: balance; }
+.sub { margin: 0; color: var(--ink-soft); font-size: 17px; }
+.controls { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; }
+.seg { display: inline-flex; background: var(--card); border: 2px solid var(--data); border-radius: 999px; padding: 4px; gap: 4px; }
+.seg button { font-family: var(--display); font-size: 22px; border: 0; background: transparent; color: var(--data); padding: 10px 22px; border-radius: 999px; cursor: pointer; min-height: 52px; }
+.seg button[aria-pressed="true"] { background: var(--data); color: #FFFFFF; }
+.seg button:focus-visible, .chip:focus-within { outline: 3px solid var(--tag); outline-offset: 2px; }
+.chip { display: inline-flex; align-items: center; gap: 10px; font-size: 18px; font-weight: 700; background: var(--tag-bg); color: var(--tag); border: 2px solid var(--tag); border-radius: 999px; padding: 10px 18px; min-height: 52px; cursor: pointer; user-select: none; }
+.chip input { width: 22px; height: 22px; accent-color: var(--tag); margin: 0; }
+.chart-card { background: var(--card); border-radius: 18px; padding: 8px 8px 4px; box-shadow: 0 1px 3px rgba(30,42,56,.08); }
+svg { display: block; width: 100%; height: auto; touch-action: manipulation; }
+.axis-num { font-size: 18px; fill: var(--ink-soft); font-variant-numeric: tabular-nums; }
+.unit { font-size: 18px; fill: var(--ink); font-weight: 700; }
+.ctitle { font-family: var(--display); font-size: 26px; fill: var(--ink); }
+.tagtext { font-size: 17px; font-weight: 700; fill: var(--tag); }
+.hit { fill: transparent; cursor: pointer; outline: none; }
+.hit:focus-visible { outline: 3px solid var(--tag); }
+.tip rect { fill: var(--ink); }
+.tip text { fill: #FFFFFF; font-size: 18px; font-weight: 700; }
+.note { margin: 0; font-size: 15px; color: var(--ink-soft); }
+.qs { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; }
+.q { background: var(--card); border-left: 6px solid var(--data); border-radius: 12px; padding: 14px 16px; font-size: 18px; line-height: 1.5; }
+.q b { font-family: var(--display); font-weight: 400; color: var(--data); font-size: 20px; display: block; margin-bottom: 2px; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>우리 동네 하루 기온</h1>
+    <p class="sub">11월 4일(수), 우리 학교 가까운 기상청 관측소에서 잰 기온이에요. 막대나 점을 눌러 보세요.</p>
+  </header>
+
+  <div class="controls">
+    <div class="seg" role="group" aria-label="그래프 바꾸기">
+      <button type="button" id="btn-bar" aria-pressed="true">막대그래프</button>
+      <button type="button" id="btn-line" aria-pressed="false">꺾은선그래프</button>
+      <button type="button" id="btn-both" aria-pressed="false">겹쳐 보기</button>
+    </div>
+    <label class="chip" for="tags"><input type="checkbox" id="tags"> 이름표 보기</label>
+  </div>
+
+  <div class="chart-card">
+    <svg id="chart" viewBox="0 0 900 540" role="img" aria-label="11월 4일 우리 동네 기온 그래프. 8시 6도, 9시 7도, 10시 8도, 11시 12도, 12시 14도, 13시 16도, 14시 16도, 15시 17도, 16시 17도, 17시 16도"></svg>
+  </div>
+  <p class="note">기온은 소수 첫째 자리에서 반올림했어요. 자료: 기상청 기상자료개방포털</p>
+
+  <section class="qs" aria-label="짝과 함께 생각해 볼 질문">
+    <div class="q"><b>질문 1</b>그래프를 바꾸어도 그대로인 것은 무엇인가요?</div>
+    <div class="q"><b>질문 2</b>꺾은선그래프의 점은 막대그래프의 어디에 있나요? ‘겹쳐 보기’로 확인해 보세요.</div>
+    <div class="q"><b>질문 3</b>기온이 가장 많이 변한 때를 찾기 쉬운 그래프는 어느 쪽인가요?</div>
+  </section>
+</main>
+
+<script>
+(function () {
+  var H = [8, 9, 10, 11, 12, 13, 14, 15, 16, 17];
+  var T = [6, 7, 8, 12, 14, 16, 16, 17, 17, 16];
+  var NS = 'http://www.w3.org/2000/svg';
+  var W = 900, HT = 540, L = 78, R = 28, TOP = 92, B = 80;
+  var PW = W - L - R, PH = HT - TOP - B, YMAX = 18, n = H.length, slot = PW / n;
+  var x = function (i) { return L + slot * (i + 0.5); };
+  var y = function (v) { return TOP + PH * (1 - v / YMAX); };
+  var base = y(0), bw = slot * 0.56;
+  var svg = document.getElementById('chart');
+  var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  function el(tag, attrs, parent, text) {
+    var e = document.createElementNS(NS, tag);
+    for (var k in attrs) e.setAttribute(k, attrs[k]);
+    if (text != null) e.textContent = text;
+    (parent || svg).appendChild(e);
+    return e;
+  }
+
+  // 제목
+  el('text', { x: W / 2, y: 40, 'text-anchor': 'middle', 'class': 'ctitle' }, null, '11월 4일 우리 동네 기온');
+  // 눈금과 격자
+  for (var v = 0; v <= YMAX; v += 2) {
+    el('line', { x1: L, x2: L + PW, y1: y(v), y2: y(v), stroke: v === 0 ? 'var(--ink)' : 'var(--grid)', 'stroke-width': v === 0 ? 2 : 1.5 });
+    el('text', { x: L - 14, y: y(v) + 6, 'text-anchor': 'end', 'class': 'axis-num' }, null, v);
+  }
+  el('line', { x1: L, x2: L, y1: TOP, y2: base, stroke: 'var(--ink)', 'stroke-width': 2 });
+  H.forEach(function (h, i) { el('text', { x: x(i), y: base + 30, 'text-anchor': 'middle', 'class': 'axis-num' }, null, h); });
+  var unitY = el('text', { x: L - 14, y: TOP - 18, 'text-anchor': 'end', 'class': 'unit' }, null, '(도)');
+  var unitX = el('text', { x: L + PW, y: base + 62, 'text-anchor': 'end', 'class': 'unit' }, null, '(시)');
+
+  // 막대
+  var bars = T.map(function (t) {
+    return el('rect', { x: 0, y: base, width: bw, height: 0, rx: 5, fill: 'var(--data)' });
+  });
+  // 선(구간별)과 점
+  var segs = [];
+  for (var j = 0; j < n - 1; j++) {
+    var sl = el('line', { x1: x(j), y1: y(T[j]), x2: x(j + 1), y2: y(T[j + 1]), stroke: 'var(--data)', 'stroke-width': 5, 'stroke-linecap': 'round' });
+    var len = Math.hypot(x(j + 1) - x(j), y(T[j + 1]) - y(T[j]));
+    sl.style.strokeDasharray = len; sl._len = len;
+    segs.push(sl);
+  }
+  var dots = T.map(function (t, i) {
+    return el('circle', { cx: x(i), cy: y(t), r: 10, fill: 'var(--data)', stroke: '#FFFFFF', 'stroke-width': 3 });
+  });
+  // 이름표
+  var tagG = el('g', { 'aria-hidden': 'true' });
+  function tag(label, tx, ty, ax, ay, anchor) {
+    var g = el('g', {}, tagG);
+    el('line', { x1: tx, y1: ty, x2: ax, y2: ay, stroke: 'var(--tag)', 'stroke-width': 2.5 }, g);
+    el('circle', { cx: ax, cy: ay, r: 4, fill: 'var(--tag)' }, g);
+    var w = label.length * 17 + 24;
+    var rx = anchor === 'end' ? tx - w : anchor === 'middle' ? tx - w / 2 : tx;
+    el('rect', { x: rx, y: ty - 17, width: w, height: 34, rx: 17, fill: 'var(--tag-bg)', stroke: 'var(--tag)', 'stroke-width': 2 }, g);
+    el('text', { x: rx + w / 2, y: ty + 6, 'text-anchor': 'middle', 'class': 'tagtext' }, g, label);
+    return g;
+  }
+  var tTitle = tag('제목', 250, 36, 345, 30, 'end');
+  var tYAxis = tag('세로 눈금', L + 24, y(16.5), L - 26, y(14), 'start');
+  var tXAxis = tag('가로 눈금', 300, HT - 18, x(3), base + 36, 'end');
+  var tUnit = tag('단위', L + 24, TOP - 24, L - 6, TOP - 24, 'start');
+  var tDot = tag('점', x(1), y(11), x(1), y(7) - 13, 'middle');
+  var tLine = tag('선', x(5) + 70, y(9), (x(3) + x(4)) / 2 + 4, (y(12) + y(14)) / 2 + 6, 'start');
+  var tBar = tag('막대', x(5) + 70, y(9), x(4) + 6, y(9), 'start');
+
+  // 누르면 값 보기
+  var tip = el('g', { 'class': 'tip', visibility: 'hidden' });
+  var tipRect = el('rect', { x: 0, y: 0, width: 120, height: 38, rx: 10 }, tip);
+  var tipText = el('text', { x: 60, y: 26, 'text-anchor': 'middle' }, tip, '');
+  var selected = -1;
+  function showTip(i) {
+    selected = i;
+    var top = mode === 'bar' ? y(T[i]) : y(T[i]) - 6;
+    var tx = Math.min(Math.max(x(i) - 60, L), L + PW - 120);
+    tipText.textContent = H[i] + '시 · ' + T[i] + '도';
+    var tw = Math.ceil(tipText.getComputedTextLength()) + 32;
+    tipRect.setAttribute('width', tw); tipText.setAttribute('x', tw / 2);
+    tx = Math.min(Math.max(x(i) - tw / 2, L), L + PW - tw);
+    tip.setAttribute('transform', 'translate(' + tx + ',' + (top - 52) + ')');
+    tip.setAttribute('visibility', 'visible');
+    dots.forEach(function (d, k) { d.setAttribute('r', k === i ? 13 : 10); });
+    bars.forEach(function (b, k) { b.setAttribute('fill', k === i && mode !== 'line' ? '#1F4F8A' : (mode === 'both' ? 'var(--data-soft)' : 'var(--data)')); });
+  }
+  H.forEach(function (h, i) {
+    var hit = el('rect', { x: L + slot * i, y: TOP - 10, width: slot, height: PH + 10, 'class': 'hit', tabindex: 0, role: 'button', 'aria-label': h + '시 ' + T[i] + '도' });
+    hit.addEventListener('click', function () { showTip(i); });
+    hit.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); showTip(i); } });
+  });
+
+  // 그래프 바꾸기: 점 찍기 → 막대 사라지기 → 선 잇기
+  var mode = 'bar';
+  var st = { bar: 1, dots: T.map(function () { return 0; }), segs: segs.map(function () { return 0; }) };
+  var token = 0;
+  function backOut(p) { var c = 1.9; return 1 + (c + 1) * Math.pow(p - 1, 3) + c * Math.pow(p - 1, 2); }
+  function render() {
+    bars.forEach(function (bEl, i) {
+      var hgt = Math.max((base - y(T[i])) * st.bar, 0);
+      bEl.setAttribute('x', x(i) - bw / 2);
+      bEl.setAttribute('y', base - hgt);
+      bEl.setAttribute('height', hgt);
+      bEl.style.opacity = st.bar > 0.001 ? 1 : 0;
+    });
+    dots.forEach(function (d, i) {
+      var p = st.dots[i];
+      d.style.opacity = p > 0 ? Math.min(p * 2, 1) : 0;
+      d.setAttribute('r', (i === selected ? 13 : 10) * Math.max(backOut(p), 0));
+    });
+    segs.forEach(function (sl, j) { sl.style.strokeDashoffset = sl._len * (1 - st.segs[j]); sl.style.opacity = st.segs[j] > 0.001 ? 1 : 0; });
+    tagG.style.display = document.getElementById('tags').checked ? '' : 'none';
+    var lineOn = st.segs[n - 2] > 0.5, barOn = st.bar > 0.5;
+    tDot.style.display = st.dots[1] > 0.5 ? '' : 'none';
+    tLine.style.display = lineOn ? '' : 'none';
+    tBar.style.display = barOn && !lineOn ? '' : 'none';
+  }
+  function tween(get, set, to, dur, my) {
+    return new Promise(function (res) {
+      var from = get();
+      if (reduce || dur <= 0 || from === to) { set(to); render(); res(); return; }
+      var t0 = null;
+      function step(ts) {
+        if (my !== token) { res(); return; }
+        if (t0 === null) t0 = ts;
+        var k = Math.min((ts - t0) / dur, 1);
+        set(from + (to - from) * k); render();
+        if (k < 1) requestAnimationFrame(step); else res();
+      }
+      requestAnimationFrame(step);
+    });
+  }
+  function wait(ms, my) { return new Promise(function (res) { setTimeout(res, reduce ? 0 : ms); }); }
+  function all(fn, to, dur, my) {
+    var keys = st[fn].map(function (_, i) { return i; });
+    var from = st[fn].slice();
+    return tween(function () { return 0; }, function (k) { keys.forEach(function (i) { st[fn][i] = from[i] + (to - from[i]) * k; }); }, 1, dur, my);
+  }
+  async function go(target) {
+    var my = ++token;
+    if (target.segs === 0) await all('segs', 0, 300, my);
+    if (my !== token) return;
+    if (target.dots === 0) await all('dots', 0, 300, my);
+    if (my !== token) return;
+    if (target.bar === 1 && st.bar < 1) await tween(function () { return st.bar; }, function (v) { st.bar = v; }, 1, 600, my);
+    if (target.dots === 1) {
+      for (var i = 0; i < n; i++) {
+        if (my !== token) return;
+        if (st.dots[i] >= 1) continue;
+        (function (i) { tween(function () { return st.dots[i]; }, function (v) { st.dots[i] = v; }, 1, 260, my); })(i);
+        await wait(300, my);
+      }
+      await wait(250, my);
+    }
+    if (my !== token) return;
+    if (target.bar === 0 && st.bar > 0) await tween(function () { return st.bar; }, function (v) { st.bar = v; }, 0, 700, my);
+    if (my !== token) return;
+    if (target.segs === 1) {
+      if (st.bar === 0) await wait(200, my);
+      for (var j = 0; j < n - 1; j++) {
+        if (my !== token) return;
+        if (st.segs[j] >= 1) continue;
+        await tween(function () { return st.segs[j]; }, function (v) { st.segs[j] = v; }, 1, 260, my);
+      }
+    }
+    if (my === token && selected >= 0) showTip(selected);
+  }
+  function setMode(m) {
+    mode = m;
+    ['bar', 'line', 'both'].forEach(function (k) { document.getElementById('btn-' + k).setAttribute('aria-pressed', k === m ? 'true' : 'false'); });
+    bars.forEach(function (bEl) { bEl.setAttribute('fill', m === 'both' ? 'var(--data-soft)' : 'var(--data)'); });
+    tip.setAttribute('visibility', 'hidden');
+    go({ bar: m === 'line' ? 0 : 1, dots: m === 'bar' ? 0 : 1, segs: m === 'bar' ? 0 : 1 });
+  }
+  document.getElementById('btn-bar').addEventListener('click', function () { setMode('bar'); });
+  document.getElementById('btn-line').addEventListener('click', function () { setMode('line'); });
+  document.getElementById('btn-both').addEventListener('click', function () { setMode('both'); });
+  document.getElementById('tags').addEventListener('change', render);
+  render();
+})();
+</script>
+</body>
+</html>
